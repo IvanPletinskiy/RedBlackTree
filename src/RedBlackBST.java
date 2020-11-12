@@ -1,19 +1,19 @@
 
-public class RedBlackBST<Key extends Comparable<Key>, Value> {
+public class RedBlackBST<K extends Comparable<K>, V> {
     private static final boolean RED = true;
     private static final boolean BLACK = false;
 
     private Node root;
 
     private class Node {
-        private Key key;
-        private Value val;
+        private K key;
+        private V value;
         private Node left, right;
         private boolean color;
 
-        public Node(Key key, Value val, boolean color) {
+        public Node(K key, V value, boolean color) {
             this.key = key;
-            this.val = val;
+            this.value = value;
             this.color = color;
         }
     }
@@ -23,152 +23,194 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         return x.color == RED;
     }
 
-    public Value get(Key key) {
-        if (key == null) throw new IllegalArgumentException("argument to get() is null");
+    public V get(K key) {
+        if (key == null) throw new IllegalArgumentException("Key is null");
         return get(root, key);
     }
 
-    private Value get(Node x, Key key) {
-        while (x != null) {
-            int cmp = key.compareTo(x.key);
-            if (cmp < 0) x = x.left;
-            else if (cmp > 0) x = x.right;
-            else return x.val;
+    private V get(Node node, K key) {
+        while (node != null) {
+            int cmp = key.compareTo(node.key);
+            if (cmp < 0) {
+                node = node.left;
+            } else {
+                if (cmp > 0) {
+                    node = node.right;
+                } else {
+                    return node.value;
+                }
+            }
         }
         return null;
     }
 
-    public void put(Key key, Value val) {
-        if (key == null) throw new IllegalArgumentException("first argument to put() is null");
+    public void put(K key, V val) {
+        if (key == null) throw new IllegalArgumentException("Key is null");
 
         root = put(root, key, val);
         root.color = BLACK;
     }
 
-    private Node put(Node h, Key key, Value val) {
-        if (h == null) {
-            return new Node(key, val, RED);
+    private Node put(Node node, K key, V value) {
+        if (node == null) {
+            return new Node(key, value, RED);
         }
 
-        int cmp = key.compareTo(h.key);
-        if (cmp < 0) h.left = put(h.left, key, val);
-        else if (cmp > 0) h.right = put(h.right, key, val);
-        else h.val = val;
+        int cmp = key.compareTo(node.key);
+        if (cmp < 0) {
+            node.left = put(node.left, key, value);
+        } else {
+            if (cmp > 0) {
+                node.right = put(node.right, key, value);
+            } else {
+                node.value = value;
+            }
+        }
 
-        // fix-up any right-leaning links
-        if (isRed(h.right) && !isRed(h.left)) h = rotateLeft(h);
-        if (isRed(h.left) && isRed(h.left.left)) h = rotateRight(h);
-        if (isRed(h.left) && isRed(h.right)) flipColors(h);
+        if (isRed(node.right) && !isRed(node.left)) {
+            node = rotateLeft(node);
+        }
+        if (isRed(node.left) && isRed(node.left.left)) {
+            node = rotateRight(node);
+        }
+        if (isRed(node.left) && isRed(node.right)) {
+            flipColors(node);
+        }
 
-        return h;
+        return node;
     }
 
-    private Node deleteMin(Node h) {
-        if (h.left == null)
-            return null;
+    public void delete(K key) {
+        if (get(key) == null) {
+            return;
+        }
 
-        if (!isRed(h.left) && !isRed(h.left.left))
-            h = moveRedLeft(h);
-
-        h.left = deleteMin(h.left);
-        return balance(h);
-    }
-
-    public void delete(Key key) {
-        if (get(key) == null) return;
-
-        if (!isRed(root.left) && !isRed(root.right))
+        if (!isRed(root.left) && !isRed(root.right)) {
             root.color = RED;
+        }
 
         root = delete(root, key);
-        if (root != null) root.color = BLACK;
+        if (root != null) {
+            root.color = BLACK;
+        }
     }
 
-    private Node delete(Node h, Key key) {
-        if (key.compareTo(h.key) < 0) {
-            if (!isRed(h.left) && !isRed(h.left.left))
-                h = moveRedLeft(h);
-            h.left = delete(h.left, key);
+    private Node delete(Node node, K key) {
+        if (key.compareTo(node.key) < 0) {
+            if (!isRed(node.left) && !isRed(node.left.left)) {
+                node = moveRedLeft(node);
+            }
+
+            node.left = delete(node.left, key);
         } else {
-            if (isRed(h.left))
-                h = rotateRight(h);
-            if (key.compareTo(h.key) == 0 && (h.right == null))
+            if (isRed(node.left)) {
+                node = rotateRight(node);
+            }
+            if (key.compareTo(node.key) == 0 && (node.right == null)) {
                 return null;
-            if (!isRed(h.right) && !isRed(h.right.left))
-                h = moveRedRight(h);
-            if (key.compareTo(h.key) == 0) {
-                Node x = min(h.right);
-                h.key = x.key;
-                h.val = x.val;
-                h.right = deleteMin(h.right);
-            } else h.right = delete(h.right, key);
+            }
+            if (!isRed(node.right) && !isRed(node.right.left)) {
+                node = moveRedRight(node);
+            }
+            if (key.compareTo(node.key) == 0) {
+                Node minNode = getMinNode(node.right);
+                node.key = minNode.key;
+                node.value = minNode.value;
+                node.right = deleteMin(node.right);
+            } else {
+                node.right = delete(node.right, key);
+            }
         }
 
-        return balance(h);
+        return balanceAfterDelete(node);
     }
 
-
-    private Node rotateRight(Node h) {
-        Node x = h.left;
-        h.left = x.right;
-        x.right = h;
-        x.color = x.right.color;
-        x.right.color = RED;
-        return x;
-    }
-
-    private Node rotateLeft(Node h) {
-        Node x = h.right;
-        h.right = x.left;
-        x.left = h;
-        x.color = x.left.color;
-        x.left.color = RED;
-        return x;
-    }
-
-    private void flipColors(Node h) {
-        h.color = !h.color;
-        h.left.color = !h.left.color;
-        h.right.color = !h.right.color;
-    }
-
-    private Node moveRedLeft(Node h) {
-        flipColors(h);
-        if (isRed(h.right.left)) {
-            h.right = rotateRight(h.right);
-            h = rotateLeft(h);
-            flipColors(h);
+    private Node getMinNode(Node node) {
+        if (node.left == null) {
+            return node;
+        } else {
+            return getMinNode(node.left);
         }
-        return h;
     }
 
-    private Node moveRedRight(Node h) {
-        flipColors(h);
-        if (isRed(h.left.left)) {
-            h = rotateRight(h);
-            flipColors(h);
+    private Node deleteMin(Node node) {
+        if (node.left == null) {
+            return null;
         }
-        return h;
+
+        if (!isRed(node.left) && !isRed(node.left.left)) {
+            node = moveRedLeft(node);
+        }
+
+        node.left = deleteMin(node.left);
+        return balanceAfterDelete(node);
     }
 
-    private Node balance(Node h) {
-        if (isRed(h.right)) h = rotateLeft(h);
-        if (isRed(h.left) && isRed(h.left.left)) h = rotateRight(h);
-        if (isRed(h.left) && isRed(h.right)) flipColors(h);
-
-        return h;
+    private Node moveRedLeft(Node node) {
+        flipColors(node);
+        if (isRed(node.right.left)) {
+            node.right = rotateRight(node.right);
+            node = rotateLeft(node);
+            flipColors(node);
+        }
+        return node;
     }
 
-    private Node min(Node x) {
-        if (x.left == null) return x;
-        else return min(x.left);
+    private Node moveRedRight(Node node) {
+        flipColors(node);
+        if (isRed(node.left.left)) {
+            node = rotateRight(node);
+            flipColors(node);
+        }
+        return node;
+    }
+
+    private Node balanceAfterDelete(Node node) {
+        if (isRed(node.right)) {
+            node = rotateLeft(node);
+        }
+        if (isRed(node.left) && isRed(node.left.left)) {
+            node = rotateRight(node);
+        }
+        if (isRed(node.left) && isRed(node.right)) {
+            flipColors(node);
+        }
+
+        return node;
+    }
+
+    private Node rotateRight(Node node) {
+        Node leftNode = node.left;
+        node.left = leftNode.right;
+        leftNode.right = node;
+        leftNode.color = leftNode.right.color;
+        leftNode.right.color = RED;
+        return leftNode;
+    }
+
+    private Node rotateLeft(Node node) {
+        Node rightNode = node.right;
+        node.right = rightNode.left;
+        rightNode.left = node;
+        rightNode.color = rightNode.left.color;
+        rightNode.left.color = RED;
+        return rightNode;
+    }
+
+
+    private void flipColors(Node node) {
+        node.color = !node.color;
+        node.left.color = !node.left.color;
+        node.right.color = !node.right.color;
     }
 
     public static void main(String[] args) {
-        RedBlackBST<String, Integer> st = new RedBlackBST<>();
+        RedBlackBST<String, Integer> tree = new RedBlackBST<>();
         String input = "123456";
         for (int i = 0; i < input.length(); i++) {
-            st.put(String.valueOf(input.charAt(i)), i);
+            tree.put(String.valueOf(input.charAt(i)), i + 1);
         }
+
+        tree.delete("3");
     }
 }
